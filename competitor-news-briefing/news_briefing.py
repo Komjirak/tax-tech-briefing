@@ -4,10 +4,13 @@ Tax Tech 경쟁사 뉴스 브리핑 봇
 매일 09:00, 15:00 KST에 실행되어 Slack #tax-tech 채널로 발송
 """
 
+from __future__ import annotations
+
 import os
 import hashlib
 import feedparser
 import requests
+from urllib.parse import quote_plus
 from datetime import datetime, timedelta, timezone
 from google import genai
 
@@ -45,7 +48,7 @@ def _parse_feedparser_date(entry) -> datetime | None:
 
 def fetch_google_news(keyword: str) -> list[dict]:
     """Google News RSS — 네이버·Daum 등 주요 매체 포함"""
-    url = f"https://news.google.com/rss/search?q={keyword}&hl=ko&gl=KR&ceid=KR:ko"
+    url = f"https://news.google.com/rss/search?q={quote_plus(keyword)}&hl=ko&gl=KR&ceid=KR:ko"
     try:
         feed = feedparser.parse(url)
         cutoff = cutoff_time()
@@ -74,7 +77,7 @@ def fetch_dedicated_source(source: dict) -> list[dict]:
     results = []
     cutoff = cutoff_time()
     for keyword in COMPETITORS:
-        query = f"{keyword} {source['query']} site:{source['site']}"
+        query = quote_plus(f"{keyword} {source['query']} site:{source['site']}")
         url = f"https://news.google.com/rss/search?q={query}&hl=ko&gl=KR&ceid=KR:ko"
         try:
             feed = feedparser.parse(url)
@@ -120,7 +123,7 @@ def summarize(article: dict, client: genai.Client) -> str:
     )
     try:
         response = client.models.generate_content(
-            model="gemini-2.0-flash",
+            model="gemini-2.5-flash",
             contents=prompt,
         )
         return response.text.strip()
