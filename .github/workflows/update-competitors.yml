@@ -1,0 +1,35 @@
+name: 경쟁사 목록 자동 업데이트
+
+on:
+  schedule:
+    - cron: "50 23 * * *"   # 매일 08:50 KST (= 23:50 UTC 전날) — 오전 브리핑 직전
+    - cron: "50 5 * * *"    # 매일 14:50 KST (= 05:50 UTC)      — 오후 브리핑 직전
+  workflow_dispatch:         # 수동 실행
+
+jobs:
+  update:
+    name: Slack 메시지 감지 및 경쟁사 목록 갱신
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    permissions:
+      contents: write        # competitors.json 커밋 권한
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Python 설정
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: 의존성 설치
+        run: pip install requests
+
+      - name: 경쟁사 목록 업데이트
+        env:
+          SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+        run: python competitor-news-briefing/update_competitors.py

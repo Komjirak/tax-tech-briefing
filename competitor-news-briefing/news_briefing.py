@@ -7,6 +7,7 @@ Tax Tech 경쟁사 뉴스 브리핑 봇
 from __future__ import annotations
 
 import os
+import json
 import hashlib
 import feedparser
 import requests
@@ -16,11 +17,10 @@ from google import genai
 
 # ── 설정 ────────────────────────────────────────────────────────────────────
 
-COMPETITORS = ["삼쩜삼", "혜움", "세이브텍스", "토스인컴", "자비스", "캐시노트", "머니핀", "세무통"]
-
 SLACK_WEBHOOK_URL = os.environ["SLACK_WEBHOOK_URL"]
 GEMINI_API_KEY    = os.environ["GEMINI_API_KEY"]
 
+COMPETITORS_FILE = os.path.join(os.path.dirname(__file__), "competitors.json")
 LOOKBACK_HOURS = 8  # 6시간 주기 + 2시간 버퍼
 KST = timezone(timedelta(hours=9))
 
@@ -72,11 +72,11 @@ def fetch_google_news(keyword: str) -> list[dict]:
         return []
 
 
-def fetch_dedicated_source(source: dict) -> list[dict]:
+def fetch_dedicated_source(source: dict, competitors: list[str]) -> list[dict]:
     """AI Times / 세무일보 — Google News site: 필터로 경쟁사 언급 기사 수집"""
     results = []
     cutoff = cutoff_time()
-    for keyword in COMPETITORS:
+    for keyword in competitors:
         query = quote_plus(f"{keyword} {source['query']} site:{source['site']}")
         url = f"https://news.google.com/rss/search?q={query}&hl=ko&gl=KR&ceid=KR:ko"
         try:
@@ -200,21 +200,27 @@ def post_no_news_notice() -> None:
 
 # ── 메인 ──────────────────────────────────────────────────────────────────────
 
+def load_competitors() -> list[str]:
+    with open(COMPETITORS_FILE, encoding="utf-8") as f:
+        return json.load(f)["competitors"]
+
+
 def main() -> None:
     client = genai.Client(api_key=GEMINI_API_KEY)
-    print(f"[{datetime.now(KST).strftime('%Y-%m-%d %H:%M:%S')} KST] 뉴스 수집 시작")
+    competitors = load_competitors()
+    print(f"[{datetime.now(KST).strftime('%Y-%m-%d %H:%M:%S')} KST] 뉴스 수집 시작 (경쟁사 {len(competitors)}개)")
 
     all_articles: list[dict] = []
 
     # Google News (네이버·Daum 포함)
-    for competitor in COMPETITORS:
+    for competitor in competitors:
         items = fetch_google_news(competitor)
         all_articles.extend(items)
         print(f"  Google News [{competitor}]: {len(items)}건")
 
     # AI Times + 세무일보 (Google News site: 필터)
     for source in DEDICATED_SOURCES:
-        items = fetch_dedicated_source(source)
+        items = fetch_dedicated_source(source, competitors)
         all_articles.extend(items)
         print(f"  {source['label']}: {len(items)}건")
 
