@@ -115,11 +115,16 @@ def deduplicate(articles: list[dict]) -> list[dict]:
 
 def summarize(article: dict, client: genai.Client) -> str:
     prompt = (
-        "다음 뉴스 기사를 읽고, 경쟁사 동향·전략적 시사점 중심으로 핵심 내용을 "
-        "정확히 3줄로 요약해줘. 각 줄은 반드시 '• '로 시작해야 해.\n\n"
+        "다음 뉴스 기사를 두괄식 블릿 3줄로 요약해줘.\n"
+        "규칙:\n"
+        "- 각 줄은 '• '로 시작\n"
+        "- 첫 줄: 핵심 팩트 한 줄 (무엇을 했다/발표했다)\n"
+        "- 둘째 줄: 배경 또는 수치·규모\n"
+        "- 셋째 줄: 시사점 또는 경쟁 맥락\n"
+        "- 한 줄에 15자 이내, 명사형 종결, 문장 아닌 키워드 중심\n\n"
         f"제목: {article['title']}\n"
         f"내용: {article['content']}\n\n"
-        "핵심 3줄 요약:"
+        "요약:"
     )
     try:
         response = client.models.generate_content(
