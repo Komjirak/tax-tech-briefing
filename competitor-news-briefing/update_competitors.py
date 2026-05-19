@@ -30,7 +30,7 @@ def _slack_headers() -> dict:
 def get_channel_id() -> str:
     cursor = None
     while True:
-        params = {"types": "public_channel,private_channel", "limit": 200}
+        params = {"types": "public_channel", "limit": 200}
         if cursor:
             params["cursor"] = cursor
         resp = requests.get(
